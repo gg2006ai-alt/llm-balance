@@ -44,6 +44,21 @@ final class KeyStore {
     static func writeKey(prefix: String, value: String) {
         UserDefaults.standard.set(value, forKey: prefKey(for: prefix))
     }
+
+    // MARK: provider enabled-flag persistence (UserDefaults, survives restarts)
+    // The enabled checkbox MUST persist like the key, or every provider resets
+    // to disabled on each login (user: "после перезагрузки галочка неактивна").
+    private static func flagKey(for prefix: String) -> String {
+        "enabled." + prefKey(for: prefix)
+    }
+
+    static func readEnabled(prefix: String) -> Bool {
+        UserDefaults.standard.string(forKey: flagKey(for: prefix)) == "1"
+    }
+
+    static func writeEnabled(prefix: String, on: Bool) {
+        UserDefaults.standard.set(on ? "1" : "0", forKey: flagKey(for: prefix))
+    }
 }
 
 // MARK: - Providers
@@ -221,6 +236,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             wrapper.addSubview(nameLabel)
 
             let chk = NSButton(checkboxWithTitle: "Enabled", target: self, action: #selector(enabledToggled(_:)))
+            p.enabled = KeyStore.readEnabled(prefix: p.keyPrefix)
             chk.state = p.enabled ? .on : .off
             chk.controlSize = .regular
             chk.font = NSFont.systemFont(ofSize: 11)
@@ -330,6 +346,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         guard let name = enabledChecks.first(where: { $0.value === sender })?.key,
               let p = providers.first(where: { $0.name == name }) else { return }
         p.enabled = (sender.state == .on)
+        KeyStore.writeEnabled(prefix: p.keyPrefix, on: p.enabled)
     }
 
     @objc private func checkPressed(_ sender: NSButton) {
@@ -448,6 +465,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.title = "◐ $--"
         statusItem.menu = menu
+        // Load persisted enabled-flags BEFORE the first refresh, so a provider
+        // the user left enabled shows its balance immediately at launch — no
+        // need to reopen Settings and hit Apply. (Enabled flags are only read
+        // in buildProvidersView otherwise, which runs after launch.)
+        for p in providers { p.enabled = KeyStore.readEnabled(prefix: p.keyPrefix) }
         buildMenu()
         refresh()
 
