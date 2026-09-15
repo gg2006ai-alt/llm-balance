@@ -18,7 +18,7 @@ No Electron, no web view — pure Swift + AppKit. The whole app is a single ~180
 
 Grab the latest `LLM Balance.dmg` from [Releases](../../releases), open it and drag the app to Applications.
 
-Minimum system: macOS 12 (Monterey). Universal notes: built on Apple Silicon.
+Minimum system: macOS 26 or later (built on Apple Silicon).
 
 ## Build from source
 
